@@ -21,22 +21,38 @@ def add_dependencies_to_pom(pom_path, dependencies_path):
 
 def add_option_to_project(project_dir, project_name, option):
     # Append option-application.properties to application.properties
-    with open(os.path.join(project_dir, project_name, 'src/main/resources/application.properties'), 'a') as f:
-        with open(f'quarkus/options/{option}/application.properties', 'r') as option_f:
-            f.write(option_f.read())
+    if os.path.exists(f'quarkus/options/{option}/application.properties'):
+        with open(os.path.join(project_dir, project_name, 'src/main/resources/application.properties'), 'a') as f:
+            with open(f'quarkus/options/{option}/application.properties', 'r') as option_f:
+                f.write(option_f.read())
 
     # Append option-dependencies to pom.xml
-    add_dependencies_to_pom(os.path.join(
-        project_dir, project_name, 'pom.xml'), f'quarkus/options/{option}/dependencies.xml')
+    if os.path.exists(f'quarkus/options/{option}/dependencies.xml'):
+        add_dependencies_to_pom(os.path.join(
+            project_dir, project_name, 'pom.xml'), f'quarkus/options/{option}/dependencies.xml')
 
-    # Copy quarkus/options/{option}/{option} folder to src/main/java
-    os.system(f"cp -r quarkus/options/{option}/{option} {
-              os.path.join(project_dir, project_name, 'src/main/java/org/acme')}")
+    # Copy quarkus/options/{option}/{option} folder to src/main/java/org/acme
+    if os.path.exists(f'quarkus/options/{option}/{option}'):
+        os.system(f"cp -r quarkus/options/{option}/{option} {
+            os.path.join(project_dir, project_name, 'src/main/java/org/acme')}")
+
+    # region:    --- Particular Options
+
+    if option == 'keycloak':
+        # Append InitialializeDatabase.java to src/main/java/org/acme
+        os.system(f"cp quarkus/options/{option}/InitializeDatabase.java {
+                  os.path.join(project_dir, project_name, 'src/main/java/org/acme')}")
+
+        # Copy quarkus/options/{option}/user folder to src/main/java/org/acme
+        os.system(f"cp -r quarkus/options/{option}/user {
+            os.path.join(project_dir, project_name, 'src/main/java/org/acme')}")
+
+    # endregion: --- Particular Options
 
 
 def generate_backend(backend, project_dir, project_name, options):
     if backend == 'Quarkus':
-        os.system(f"git clone https://github.com/RolletQuentin/quarkus_keycloak_template.git {
+        os.system(f"git clone https://github.com/RolletQuentin/quarkus_template.git {
                   os.path.join(project_dir, project_name)}")
 
         # Add options
@@ -67,7 +83,7 @@ def main():
     # Step 3: Prompt for Additional Options
     options_question = [
         inquirer.Checkbox('options', message="Select additional options", choices=[
-                          's3'])
+                          'keycloak', 's3'])
     ]
     options_answer = inquirer.prompt(options_question)
     options = options_answer['options']
