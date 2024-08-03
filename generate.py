@@ -1,6 +1,7 @@
 import os
 import inquirer
 from lxml import etree as ET
+import json
 
 
 def add_dependencies_to_pom(pom_path, dependencies_path):
@@ -51,17 +52,52 @@ def add_option_to_project(project_dir, project_name, option):
 
 
 def generate_backend(backend, project_dir, project_name, options):
+
     if backend == 'Quarkus':
         os.system(f"git clone https://github.com/RolletQuentin/quarkus_template.git {
-                  os.path.join(project_dir, project_name)}")
+                  os.path.join(project_dir, project_name, "backend")}")
 
         # Add options
         for option in options:
-            add_option_to_project(project_dir, project_name, option)
+            add_option_to_project(
+                project_dir, project_name + "/backend", option)
+
+
+def add_option_to_vue_project(project_dir, project_name, option):
+    # Update dependencies
+    if os.path.exists(f'vue/options/{option}/dependencies.json'):
+        with open(f'vue/options/{option}/dependencies.json', 'r') as f:
+            dependencies = json.load(f)
+            for dependency in dependencies:
+                # npm install in the frontend folder
+                os.system(
+                    f"cd {os.path.join(project_dir, project_name)} && npm install {dependency}")
+
+    # Update src/main.ts
+    if os.path.exists(f'vue/options/{option}/main.ts'):
+        with open(os.path.join(project_dir, project_name, 'src/main.ts'), 'a') as f:
+            with open(f'vue/options/{option}/main.ts', 'r') as option_f:
+                f.write(option_f.read())
+
+    # Merge vue/options/{option}/src folder with src folder
+    if os.path.exists(f'vue/options/{option}/src'):
+        os.system(f"cp -r vue/options/{option}/src/* {
+            os.path.join(project_dir, project_name, 'src')}")
+
+
+def generate_frontend(frontend, project_dir, project_name, options):
+    if frontend == 'Vue':
+        os.system(f"git clone https://github.com/RolletQuentin/vue_template.git {
+                  os.path.join(project_dir, project_name, "frontend")}")
+
+        # Add options
+        for option in options:
+            add_option_to_vue_project(
+                project_dir, project_name + "/frontend", option)
 
 
 def main():
-    # Step 1: Prompt for Project Name and Directory
+    # Prompt for Project Name and Directory
     questions = [
         inquirer.Text('project_name',
                       message="What's the name of your project?"),
@@ -72,7 +108,9 @@ def main():
     project_name = answers['project_name']
     project_dir = answers['project_dir']
 
-    # Step 2: Prompt for Backend Choice
+    # region:    --- Backend
+
+    # Prompt for Backend Choice
     backend_question = [
         inquirer.List('backend', message="Choose your backend",
                       choices=['Quarkus'])
@@ -80,16 +118,40 @@ def main():
     backend_answer = inquirer.prompt(backend_question)
     backend = backend_answer['backend']
 
-    # Step 3: Prompt for Additional Options
+    # Prompt for Additional Options
     options_question = [
-        inquirer.Checkbox('options', message="Select additional options", choices=[
+        inquirer.Checkbox('options', message="Select additional options for backend", choices=[
                           'keycloak', 's3'])
     ]
     options_answer = inquirer.prompt(options_question)
     options = options_answer['options']
 
-    # Step 4: Clone the Backend Template
+    # endregion: --- Backend
+
+    # region:    --- Frontend
+
+    # Prompt for Frontend Choice
+    frontend_question = [
+        inquirer.List('frontend', message="Choose your frontend",
+                      choices=['Vue'])
+    ]
+
+    frontend_answer = inquirer.prompt(frontend_question)
+    frontend = frontend_answer['frontend']
+
+    # Prompt for Additional Options
+    options_question = [
+        inquirer.Checkbox('options', message="Select additional options for frontend", choices=[
+                          'keycloak'])
+    ]
+    options_answer = inquirer.prompt(options_question)
+    options = options_answer['options']
+
+    # Clone the templates
     generate_backend(backend, project_dir, project_name, options)
+    generate_frontend(frontend, project_dir, project_name, options)
+
+    # endregion: --- Frontend
 
 
 if __name__ == '__main__':
